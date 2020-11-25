@@ -159,19 +159,28 @@ abstract class CommandWithUpgrade extends \WP_CLI_Command {
 				$file_upgrader = $this->get_upgrader( $assoc_args );
 
 				$filter = false;
+
 				// If a GitHub URL, do some guessing as to the correct plugin/theme directory.
 				if ( $is_remote && 'github.com' === $this->parse_url_host_component( $slug, PHP_URL_HOST )
 						// Don't attempt to rename ZIPs uploaded to the releases page or coming from a raw source.
 						&& ! preg_match( '#github\.com/[^/]+/[^/]+/(?:releases/download|raw)/#', $slug ) ) {
 
+					// If URL provided is for releases/latest, normalize to the latest ZIP URL
+					// e.g. https://github.com/twitter/wordpress/releases/latest becomes https://github.com/twitter/wordpress/archive/2.0.5.zip
+					if( preg_match( '#(.+)releases/latest/?#i', $this->parse_url_host_component( $slug, PHP_URL_PATH ) ) ) {
+						$http_headers = wp_get_http_headers( $slug );
+						if( '302 Found' === $http_headers['status'] ) {
+							$filename = Utils\basename( $http_headers['location'] . '.zip' );
+							$slug = preg_replace( '#releases/latest/?#', 'archive/' . $filename, $slug );
+						}
+					}
+
 					$filter = function( $source, $remote_source, $upgrader ) use ( $slug ) {
 
-						$slug_dir = Utils\basename( $this->parse_url_host_component( $slug, PHP_URL_PATH ), '.zip' );
-
 						// Don't use the zip name if archive attached to release, as name likely to contain version tag/branch.
-						if ( preg_match( '#github\.com/[^/]+/([^/]+)/archive/#', $slug, $matches ) ) {
+						if ( preg_match( '#github\.com/([^/]+)/([^/]+)/archive/#', $slug, $matches ) ) {
 							// Note this will be wrong if the project name isn't the same as the plugin/theme slug name.
-							$slug_dir = $matches[1];
+							$slug_dir = $matches[1] . '-' . $matches[2];
 						}
 
 						$source_dir = Utils\basename( $source ); // `$source` is trailing-slashed path to the unzipped archive directory, so basename returns the unslashed directory.
@@ -187,9 +196,10 @@ abstract class CommandWithUpgrade extends \WP_CLI_Command {
 
 						return new \WP_Error( 'wpcli_install_github', "Couldn't move Github-based project to appropriate directory." );
 					};
+
 					add_filter( 'upgrader_source_selection', $filter, 10, 3 );
 				}
-
+				
 				if ( $file_upgrader->install( $slug ) ) {
 					$slug   = $file_upgrader->result['destination_name'];
 					$result = true;
