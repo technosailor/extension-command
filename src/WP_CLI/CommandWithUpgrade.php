@@ -178,9 +178,9 @@ abstract class CommandWithUpgrade extends \WP_CLI_Command {
 					$filter = function( $source, $remote_source, $upgrader ) use ( $slug ) {
 
 						// Don't use the zip name if archive attached to release, as name likely to contain version tag/branch.
-						if ( preg_match( '#github\.com/([^/]+)/([^/]+)/archive/#', $slug, $matches ) ) {
+						if ( preg_match( '#github\.com/[^/]+/([^/]+)/archive/#', $slug, $matches ) ) {
 							// Note this will be wrong if the project name isn't the same as the plugin/theme slug name.
-							$slug_dir = $matches[1] . '-' . $matches[2];
+							$slug_dir = $matches[1];
 						}
 
 						$source_dir = Utils\basename( $source ); // `$source` is trailing-slashed path to the unzipped archive directory, so basename returns the unslashed directory.
@@ -199,7 +199,7 @@ abstract class CommandWithUpgrade extends \WP_CLI_Command {
 
 					add_filter( 'upgrader_source_selection', $filter, 10, 3 );
 				}
-				
+
 				if ( $file_upgrader->install( $slug ) ) {
 					$slug   = $file_upgrader->result['destination_name'];
 					$result = true;
