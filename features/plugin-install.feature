@@ -241,7 +241,7 @@ Feature: Install WordPress plugins
   Scenario: Verify that providing a releases/latest GitHub URL will get the latest ZIP
     Given a WP install
 
-    When I run `wp plugin install https://github.com/twitter/wordpress/releases/latest`
+    When I run `wp plugin install https://github.com/danielbachhuber/one-time-login/releases/latest`
     Then STDOUT should contain:
     """
     Downloading installation package from
